@@ -1,0 +1,91 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  SAPASCSHOST:
+    Description: "SAP ASCS Host Instance ID"
+    Type: String
+  SAPERSHOST:
+    Description: "SAP ERS HOST Instance ID"
+    Type: String
+Resources:
+  SSMRunCommandDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: 'Command'
+      Content:
+        schemaVersion: '2.2'
+        description: "Some description"
+        mainSteps:
+          - action: "aws:runShellScript"
+            name: runShellScript
+            inputs:
+              runCommand:
+                - INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+                - STCOUNT=$( /usr/sbin/crm_mon -1|grep stonith|grep Started|wc -l)
+                - echo $STCOUNT
+                - if [ $STCOUNT -gt 0 ]
+                - then
+                - echo "Stonith is running"
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-Stonith-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $STCOUNT
+                - else
+                - echo "Stonith is not running"
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-Stonith-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $STCOUNT
+                - fi
+                - OIPCOUNT=$(/usr/sbin/crm_mon -1|grep aws-vpc-move-ip|grep Started|wc -l)
+                - echo $OIPCOUNT
+                - if [ $OIPCOUNT -eq 2 ]
+                - then
+                - echo "Overlay IP is running"
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-OIP-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $OIPCOUNT
+                - else
+                - echo "Overlay IP is not running"
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-OIP-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $OIPCOUNT
+                - fi
+                - SAPCOUNT=$(/usr/sbin/crm_mon -1|grep SAPInstance|grep Started|wc -l)
+                - echo $SAPCOUNT
+                - if [ $SAPCOUNT -eq 2 ]
+                - then
+                - echo "SAP Instance is running"
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-SAPInstance-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $SAPCOUNT
+                - else
+                - echo "SAP Instance is not running"
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-SAPInstance-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $SAPCOUNT
+                - fi
+                - FILECOUNT=$(/usr/sbin/crm_mon -1|grep Filesystem|grep Started|wc -l)
+                - echo $FILECOUNT
+                - if [ $FILECOUNT -eq 2 ]
+                - then
+                - echo "All SAP file systems are up in cluster"
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-FileSystem-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $FILECOUNT
+                - else
+                - echo "Some files systems are not running"
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-FileSystem-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $FILECOUNT
+                - fi
+                - NODES=$(/usr/sbin/crm_mon -1X | grep -e "node name=.*online=.true." | wc -l)
+                - echo $NODES
+                - aws cloudwatch put-metric-data --metric-name SAPCluster-Node-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $NODES    # required
+                - DISKUSAGE=$(df -hP /usr/sap | awk '{print $5}' |tail -1|sed 's/%$//g')
+                - echo $DISKUSAGE
+                - aws cloudwatch put-metric-data --metric-name SAP-Disc-usage --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $DISKUSAGE
+                - MEMUSAGE=$(free -m|awk '/^Mem:/{print 100*$3/$2}')
+                - echo $MEMUSAGE
+                - aws cloudwatch put-metric-data --metric-name SAP-Host-Memory-Usage --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $MEMUSAGE
+
+  CloudWatchEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "The ARN from the eventbridge role resource"
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/EVENT-RULE-ROLE"
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Id: SAPClusID
+          Arn: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${SSMRunCommandDocument}"
+          RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/SSM-DOCUMENT-ROLE"
+          RunCommandParameters:
+            RunCommandTargets:
+             - Key: InstanceIds
+               Values:
+                 - !Ref SAPASCSHOST
+                 - !Ref SAPERSHOST

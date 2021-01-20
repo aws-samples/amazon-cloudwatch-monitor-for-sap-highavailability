@@ -1,0 +1,84 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  SAPPASHOST:
+    Description: "SAP Primary Application Host Instance ID"
+    Type: String
+
+  SAPASCSHOST:
+    Description: "SAP ASCS Host Instance ID"
+    Type: String
+
+  SAPERSHOST:
+    Description: "SAP ERS Host Instance ID"
+    Type: String
+
+  HANAPRIMARYHOST:
+    Description: "SAP HANA Primary Host Instance ID"
+    Type: String
+
+  HANASECONDARYHOST:
+    Description: "SAP HANA Secondary Host Instance ID"
+    Type: String
+
+  S3Bucket:
+    Description: "S3 Bucket of monitoring template"
+    Type: String
+
+  SAPSID:
+    Description: "SAP Instance ID in Upper Case"
+    Type: String
+    Default: T01
+
+Resources:
+  PASStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - IAMROLEstack
+    Properties:
+      Parameters:                # optional, map of String
+        SAPPASHOST: !Ref SAPPASHOST
+      TemplateURL: !Sub "https://${S3Bucket}.s3.amazonaws.com/sapavailability.yaml"     # required
+      TimeoutInMinutes: 10
+
+  HANACusterStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - IAMROLEstack
+    Properties:
+      Parameters:                # optional, map of String
+        HANAPRIMARYHOST: !Ref HANAPRIMARYHOST
+        HANASECONDARYHOST: !Ref HANASECONDARYHOST
+      TemplateURL: !Sub "https://${S3Bucket}.s3.amazonaws.com/hanaclustermon.yaml"     # required
+      TimeoutInMinutes: 10     # optional
+
+  SAPClusterStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - IAMROLEstack
+    Properties:
+      Parameters:                # optional, map of String
+        SAPASCSHOST: !Ref SAPASCSHOST
+        SAPERSHOST: !Ref SAPERSHOST
+      TemplateURL: !Sub "https://${S3Bucket}.s3.amazonaws.com/sapclustermon.yaml"     # required
+      TimeoutInMinutes: 10
+
+  DashboardStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:                # optional, map of String
+        SAPASCSHOST: !Ref SAPASCSHOST
+        SAPERSHOST: !Ref SAPERSHOST
+        SAPPASHOST: !Ref SAPPASHOST
+        HANAPRIMARYHOST: !Ref HANAPRIMARYHOST
+        HANASECONDARYHOST: !Ref HANASECONDARYHOST
+        SAPSID: !Ref SAPSID
+      TemplateURL: !Sub "https://${S3Bucket}.s3.amazonaws.com/cloudwatch.yaml"     # required
+      TimeoutInMinutes: 10
+
+  IAMROLEstack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://${S3Bucket}.s3.amazonaws.com/roles.yaml"     # required
+      TimeoutInMinutes: 10

@@ -1,17 +1,19 @@
-## My Project
+# Overview
 
-TODO: Fill this README out!
+SAP Application Clusters resources, HANA database Cluster resources and SAP Application services availability by Amazon CloudWatch.
 
-Be sure to:
 
-* Change the title in this README
-* Edit your repository description on GitHub
+# Pre-requisite
 
-## Security
+The pre-requisites for EC2 instances  to be monitored to have
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+ - Role with CloudWatch PutMetricData policy
+ - AWS CLI configured
+ - SSM Agent running
 
-## License
+## Setup
 
-This library is licensed under the MIT-0 License. See the LICENSE file.
+Please follow the steps described in the [document](https://collaborate-corp.amazon.com/nuxeo/nxdoc/default/d4e7dbe5-658c-48ff-b05b-421655935118/view_documents?tabIds=:&conversationId=0NXMAIN1).
 
+## Architecture
+Detailed architecture of the monitoring can be found in [document](https://collaborate-corp.amazon.com/nuxeo/nxdoc/default/d4e7dbe5-658c-48ff-b05b-421655935118/view_documents?tabIds=:&conversationId=0NXMAIN1).

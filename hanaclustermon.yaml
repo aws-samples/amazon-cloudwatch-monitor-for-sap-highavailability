@@ -1,0 +1,113 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  HANAPRIMARYHOST:
+    Description: "Primary Hana Host Instance ID"
+    Type: String
+  HANASECONDARYHOST:
+    Description: "Secondary Hana Host Instance ID"
+    Type: String
+
+
+Resources:
+  SSMRunCommandDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: 'Command'
+      Content:
+        schemaVersion: '2.2'
+        description: "Some description"
+        mainSteps:
+          - action: "aws:runShellScript"
+            name: runShellScript
+            inputs:
+              runCommand:
+                - INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+                - DBSID=$(grep -o ''pf=[^[:space:]]*'' /usr/sap/sapservices | grep _HDB|awk -F "/" '{print $4}')
+                - SIDLOWER=$(echo ${DBSID,,})
+                - echo $SIDLOWER
+                - SIDADM=${SIDLOWER}adm
+                - echo $SIDADM
+                - STCOUNT=$(/usr/sbin/crm_mon -1|grep stonith|grep Started|wc -l)
+                - echo $STCOUNT
+                - if [ $STCOUNT -gt 0 ]
+                - then
+                - echo "Stonith is running"
+                - aws cloudwatch put-metric-data --metric-name HANACluster-Stonith-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $STCOUNT
+                - else
+                - echo "Stonith is not running"
+                - aws cloudwatch put-metric-data --metric-name HANACluster-Stonith-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $STCOUNT
+                - fi
+                - OIPCOUNT=$( /usr/sbin/crm_mon -1|grep aws-vpc-move-ip|grep Started|wc -l)
+                - echo $OIPCOUNT
+                - if [ $OIPCOUNT -gt 0 ]
+                - then
+                - echo "Overlay IP is running"
+                - aws cloudwatch put-metric-data --metric-name HANACluster-OIP-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $OIPCOUNT
+                - else
+                - echo "Overlay IP is not running"
+                - aws cloudwatch put-metric-data --metric-name HANACluster-OIP-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $OIPCOUNT
+                - fi
+                - CLNCOUNT=$( /usr/sbin/crm_mon -1 |grep -A 1 SAPHanaTopology |grep Started | wc -l)
+                - echo $CLNCOUNT
+                - if [ $CLNCOUNT -gt 0 ]
+                - then
+                - echo "Clone Set is running"
+                - aws cloudwatch put-metric-data --metric-name HANACluster-Clone-set-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $CLNCOUNT
+                - else
+                - echo "Clone Set is not running"
+                - aws cloudwatch put-metric-data --metric-name HANACluster-Clone-set-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $CLNCOUNT
+                - fi
+                - NODES=$(/usr/sbin/crm_mon -1X | grep -e "node name=.*online=.true." | wc -l)
+                - echo $NODES
+                - aws cloudwatch put-metric-data --metric-name HANACluster-Node-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $NODES
+                - STATE=$(runuser -l $SIDADM  -c "hdbnsutil -sr_state --sapcontrol=1|grep online=true|wc -l")
+                - echo $STATE
+                - aws cloudwatch put-metric-data --metric-name HANA-Replication-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $STATE
+                - DISKUSAGE=$(df -hP /hana/log | awk '{print $5}' |tail -1|sed 's/%$//g')
+                - echo $DISKUSAGE
+                - aws cloudwatch put-metric-data --metric-name HANA-Log-Disk-usage --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $DISKUSAGE
+                - DATADISKUSAGE=$(df -hP /hana/data | awk '{print $5}' |tail -1|sed 's/%$//g')
+                - echo $DATADISKUSAGE
+                - aws cloudwatch put-metric-data --metric-name HANA-Data-Disk-usage --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $DATADISKUSAGE
+                - MEMUSAGE=$(free -m|awk '/^Mem:/{print 100*$3/$2}')
+                - echo $MEMUSAGE
+                - aws cloudwatch put-metric-data --metric-name HANA-Host-Memory-Usage --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $MEMUSAGE
+                - HOST=$(hostname)
+                - NN=$(grep -o ''pf=[^[:space:]]*'' /usr/sap/sapservices | grep _$HOST|awk -F "/" '{print $7}'|awk -F "_" '{print $2}'|sed 's@^[^0-9]*\([0-9]\+\).*@\1@')
+                - INDEXCOUNT=$(runuser -l $SIDADM -c "sapcontrol -nr $NN -function GetProcessList" | grep hdbindexserver | grep Running | wc -l)
+                - aws cloudwatch put-metric-data --metric-name HANA-hdbindexserver --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $INDEXCOUNT
+                - DAEMONCOUNT=$(runuser -l $SIDADM -c "sapcontrol -nr $NN -function GetProcessList" | grep hdbdaemon | grep Running | wc -l)
+                - aws cloudwatch put-metric-data --metric-name HANA-hdbdaemon --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $DAEMONCOUNT
+                - COMPILECOUNT=$(runuser -l $SIDADM -c "sapcontrol -nr $NN -function GetProcessList" | grep hdbcompileserver | grep Running | wc -l)
+                - aws cloudwatch put-metric-data --metric-name HANA-hdbcompileserver --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $COMPILECOUNT
+                - NAMECOUNT=$(runuser -l $SIDADM -c "sapcontrol -nr $NN -function GetProcessList" | grep hdbnameserver | grep Running | wc -l)
+                - aws cloudwatch put-metric-data --metric-name HANA-hdbnameserver --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $NAMECOUNT
+                - PREPCOUNT=$(runuser -l $SIDADM -c "sapcontrol -nr $NN -function GetProcessList" | grep hdbpreprocessor | grep Running | wc -l)
+                - aws cloudwatch put-metric-data --metric-name HANA-hdbpreprocessor --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $PREPCOUNT
+                - XSCOUNT=$(runuser -l $SIDADM -c "sapcontrol -nr $NN -function GetProcessList" | grep hdbxsengine | grep Running | wc -l)
+                - aws cloudwatch put-metric-data --metric-name HANA-hdbxsengine --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $XSCOUNT
+                - DATASYNCCOUNT=$(runuser -l $SIDADM -c 'hdbcons -e hdbindexserver "replication info"' | grep ReplicationStatus | grep ReplicationStatus_Active | wc -l)
+                - aws cloudwatch put-metric-data --metric-name HANA-Data-Sync-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $DATASYNCCOUNT
+
+
+
+
+  CloudWatchEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "The ARN from the eventbridge role resource"
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/EVENT-RULE-ROLE"
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Id: HANAClusID
+          Arn: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${SSMRunCommandDocument}"
+          RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/SSM-DOCUMENT-ROLE"
+          RunCommandParameters:
+            RunCommandTargets:
+             - Key: InstanceIds
+               Values:
+                 - !Ref HANAPRIMARYHOST
+                 - !Ref HANASECONDARYHOST

@@ -1,0 +1,85 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  SAPPASHOST:
+    Description: "SAP Primary Application Host Instance ID"
+    Type: String
+
+Resources:
+  SSMRunCommandDocument:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: 'Command'
+      Content:
+        schemaVersion: '2.2'
+        description: "Some description"
+        mainSteps:
+          - action: "aws:runShellScript"
+            name: runShellScript
+            inputs:
+              runCommand:
+                - INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+                - COUNT=$(/usr/bin/ps -ef|grep dw.sap|grep pf=|wc -l)
+                - echo $COUNT
+                - if [ $COUNT -eq 0 ]
+                - then
+                - echo "SAP is down"
+                - aws cloudwatch put-metric-data --metric-name SAP-Dispatcher-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $COUNT
+                - else
+                - echo "SAP is up"
+                - aws cloudwatch put-metric-data --metric-name SAP-Dispatcher-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $COUNT
+                - fi
+                - IGS=$(/usr/bin/ps -ef|grep sap|grep ig.sap|grep pf=|wc -l)
+                - echo $IGS
+                - if [ $IGS -eq 0 ]
+                - then
+                - echo "SAP IGS Service are down"
+                - aws cloudwatch put-metric-data --metric-name SAP-IGS-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $IGS
+                - else
+                - echo " SAP IGS Service are up"
+                - aws cloudwatch put-metric-data --metric-name SAP-IGS-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $IGS
+                - fi
+                - GATEWAY=$(/usr/bin/ps -ef|grep sap|grep gwrd|grep pf=|wc -l)
+                - echo $GATEWAY
+                - if [ $GATEWAY -eq 0 ]
+                - then
+                - echo "SAP Gateway Services down"
+                - aws cloudwatch put-metric-data --metric-name SAP-Gateway-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $GATEWAY
+                - else
+                - echo "SAP Gateway Services are up"
+                - aws cloudwatch put-metric-data --metric-name SAP-Gateway-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $GATEWAY
+                - fi
+                - ICM=$(/usr/bin/ps -ef|grep sap|grep icman|grep pf=|wc -l)
+                - echo $ICM
+                - if [ $ICM -eq 0 ]
+                - then
+                - echo "SAP ICM Services are down"
+                - aws cloudwatch put-metric-data --metric-name SAP-ICM-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $ICM
+                - else
+                - echo "SAP ICM Services are up"
+                - aws cloudwatch put-metric-data --metric-name SAP-ICM-Status --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $ICM
+                - fi
+                - MEMUSAGE=$(free -m|awk '/^Mem:/{print 100*$3/$2}')
+                - echo $MEMUSAGE
+                - aws cloudwatch put-metric-data --metric-name SAP-Host-Memory-Usage --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $MEMUSAGE
+                - DISKUSAGE=$(df -hP /usr/sap | awk '{print $5}' |tail -1|sed 's/%$//g')
+                - echo $DISKUSAGE
+                - aws cloudwatch put-metric-data --metric-name SAP-Disc-usage --dimensions Instance=$INSTANCE_ID --namespace "Custom" --value $DISKUSAGE
+
+  CloudWatchEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: "The ARN from the eventbridge role resource"
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/EVENT-RULE-ROLE"
+      ScheduleExpression: rate(1 minute)
+      State: ENABLED
+      Targets:
+        - Id: PasMonId
+          Arn: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:document/${SSMRunCommandDocument}"
+          RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/SSM-DOCUMENT-ROLE"
+          RunCommandParameters:
+            RunCommandTargets:
+             - Key: InstanceIds
+               Values:
+                 - !Ref SAPPASHOST

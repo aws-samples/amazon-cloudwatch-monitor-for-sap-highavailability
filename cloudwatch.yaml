@@ -1,0 +1,335 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  SAPPASHOST:
+    Description: "SAP Primary Application Host Instance ID"
+    Type: String
+
+  SAPASCSHOST:
+    Description: "SAP ASCS Host Instance ID"
+    Type: String
+
+  SAPERSHOST:
+    Description: "SAP ERS Host Instance ID"
+    Type: String
+
+  HANAPRIMARYHOST:
+    Description: "SAP HANA Primary Host Instance ID"
+    Type: String
+
+  HANASECONDARYHOST:
+    Description: "SAP HANA Secondary Host Instance ID"
+    Type: String
+
+  SAPSID:
+    Description: "SAP Instance ID"
+    Type: String
+    Default: T01
+Resources:
+  SAPInstanceDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Ref SAPSID
+      DashboardBody: !Sub |
+          {
+              "widgets": [
+                {
+                      "type": "metric",
+                      "x": 0,
+                      "y": 0,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "SAP-Host-Memory-Usage", "Instance", "${SAPPASHOST}" ],
+                            [ "Custom", "SAP-Host-Memory-Usage", "Instance", "${SAPASCSHOST}" ],
+                            [ "Custom", "SAP-Host-Memory-Usage", "Instance", "${SAPERSHOST}" ]
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "SAP MemoryUtilization",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 6,
+                      "y": 0,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "HANA-Host-Memory-Usage", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-Host-Memory-Usage", "Instance", "${HANASECONDARYHOST}" ]
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "HANA MemoryUtilization",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 12,
+                      "y": 0,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "HANACluster-OIP-Status", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANACluster-Stonith-Status", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANACluster-Clone-set-Status", "Instance", "${HANAPRIMARYHOST}" ]
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "HANA Cluster status Primary Node",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 18,
+                      "y": 0,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "HANACluster-OIP-Status", "Instance", "${HANASECONDARYHOST}" ],
+                            [ "Custom", "HANACluster-Stonith-Status", "Instance", "${HANASECONDARYHOST}" ],
+                            [ "Custom", "HANACluster-Clone-set-Status", "Instance", "${HANASECONDARYHOST}" ]
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "HANA Cluster status Secondary Node",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 0,
+                      "y": 6,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "SAPCluster-SAPInstance-Status", "Instance", "${SAPASCSHOST}" ],
+                            [ "Custom", "SAPCluster-FileSystem-Status", "Instance", "${SAPASCSHOST}" ],
+                            [ "Custom", "SAPCluster-OIP-Status", "Instance", "${SAPASCSHOST}" ],
+                            [ "Custom", "SAPCluster-Stonith-Status", "Instance", "${SAPASCSHOST}" ]
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "SAP Cluster status Primary Node",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 6,
+                      "y": 6,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "SAPCluster-SAPInstance-Status", "Instance", "${SAPERSHOST}" ],
+                            [ "Custom", "SAPCluster-FileSystem-Status", "Instance", "${SAPERSHOST}" ],
+                            [ "Custom", "SAPCluster-OIP-Status", "Instance", "${SAPERSHOST}" ],
+                            [ "Custom", "SAPCluster-Stonith-Status", "Instance", "${SAPERSHOST}" ]
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "SAP Cluster status Secondary Node",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 12,
+                      "y": 6,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "SAP-Dispatcher-Status", "Instance", "${SAPPASHOST}" ],
+                            [ "Custom", "SAP-IGS-Status", "Instance", "${SAPPASHOST}" ],
+                            [ "Custom", "SAP-Gateway-Status", "Instance", "${SAPPASHOST}" ],
+                            [ "Custom", "SAP-ICM-Status", "Instance", "${SAPPASHOST}" ]
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "SAP Dispatcher status Primary Application Server ",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 18,
+                      "y": 6,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "SAP-Disc-usage", "Instance", "${SAPPASHOST}" ],
+                            [ "Custom", "SAP-Disc-usage", "Instance", "${SAPASCSHOST}" ],
+                            [ "Custom", "SAP-Disc-usage", "Instance", "${SAPERSHOST}" ]
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "SAP /usr/sap disk usage",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 0,
+                      "y": 12,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "HANA-Log-Disk-usage", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-Log-Disk-usage", "Instance", "${HANASECONDARYHOST}" ]
+
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "HANA database log disk usage",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 6,
+                      "y": 12,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "HANA-Data-Disk-usage", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-Data-Disk-usage", "Instance", "${HANASECONDARYHOST}" ]
+
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "HANA database Data disk usage",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 12,
+                      "y": 12,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "AWS/EC2", "CPUUtilization", "InstanceId", "${HANAPRIMARYHOST}" ],
+                            [ "AWS/EC2", "CPUUtilization", "InstanceId", "${HANASECONDARYHOST}" ],
+                            [ "AWS/EC2", "CPUUtilization", "InstanceId", "${SAPPASHOST}" ],
+                            [ "AWS/EC2", "CPUUtilization", "InstanceId", "${SAPASCSHOST}" ],
+                            [ "AWS/EC2", "CPUUtilization", "InstanceId", "${SAPERSHOST}" ]
+
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "SAP and DB Instance CPU utilizaton",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 18,
+                      "y": 12,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "HANA-Replication-Status", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-Replication-Status", "Instance", "${HANASECONDARYHOST}" ]
+
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "HANA Replication Status",
+                          "stacked": false
+                      }
+
+                },
+                {
+                      "type": "metric",
+                      "x": 0,
+                      "y": 18,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "HANA-hdbindexserver", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-hdbindexserver", "Instance", "${HANASECONDARYHOST}" ],
+                            [ "Custom", "HANA-hdbdaemon", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-hdbdaemon", "Instance", "${HANASECONDARYHOST}" ],
+                            [ "Custom", "HANA-hdbcompileserver", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-hdbcompileserver", "Instance", "${HANASECONDARYHOST}" ],
+                            [ "Custom", "HANA-hdbnameserver", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-hdbnameserver", "Instance", "${HANASECONDARYHOST}" ],
+                            [ "Custom", "HANA-hdbpreprocessor", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-hdbpreprocessor", "Instance", "${HANASECONDARYHOST}" ],
+                            [ "Custom", "HANA-hdbxsengine", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-hdbxsengine", "Instance", "${HANASECONDARYHOST}" ]
+
+
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "HANA Service Status",
+                          "stacked": false
+                      }
+                },
+                {
+                      "type": "metric",
+                      "x": 6,
+                      "y": 18,
+                      "width": 6,
+                      "height": 6,
+                      "properties": {
+                        "metrics": [
+                            [ "Custom", "HANA-Data-Sync-Status", "Instance", "${HANAPRIMARYHOST}" ],
+                            [ "Custom", "HANA-Data-Sync-Status", "Instance", "${HANASECONDARYHOST}" ]
+
+                        ],
+                          "region": "${AWS::Region}",
+                          "stat": "Average",
+                          "period": 300,
+                          "view": "timeSeries",
+                          "title": "HANA Data Sync Status",
+                          "stacked": false
+                      }
+                }
+              ]
+          }
