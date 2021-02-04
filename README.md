@@ -13,7 +13,7 @@ The pre-requisites for EC2 instances  to be monitored to have
 
 ## Setup
 
-Please follow the steps described in the [document](https://collaborate-corp.amazon.com/nuxeo/nxdoc/default/d4e7dbe5-658c-48ff-b05b-421655935118/view_documents?tabIds=:&conversationId=0NXMAIN1).
+Please follow the steps described in the [document](https://aws.amazon.com/blogs/awsforsap/sap-application-cluster-sap-hana-cluster-and-sap-application-service-monitoring/).
 
 ## Architecture
-Detailed architecture of the monitoring can be found in [document](https://collaborate-corp.amazon.com/nuxeo/nxdoc/default/d4e7dbe5-658c-48ff-b05b-421655935118/view_documents?tabIds=:&conversationId=0NXMAIN1).
+Detailed architecture of the monitoring can be found in [document](https://aws.amazon.com/blogs/awsforsap/sap-application-cluster-sap-hana-cluster-and-sap-application-service-monitoring/).
